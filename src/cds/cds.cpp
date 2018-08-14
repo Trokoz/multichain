@@ -1,11 +1,9 @@
 #ifdef _MSC_VER
 #include "stdafx.h"
-#include "utils/util.h"
 #endif
 
 #include "cds.h"
-
-
+#include "utils/util.h"
  
 tcp_client::tcp_client()
 {
