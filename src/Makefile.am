@@ -176,6 +176,7 @@ libbitcoin_server_a_SOURCES = \
   chain/checkpoints.cpp \
   core/init.cpp \
   storage/leveldbwrapper.cpp \
+  cds/cds.cpp \
   core/main.cpp \
   protocol/multichaintx.cpp \
   protocol/multichainblock.cpp \

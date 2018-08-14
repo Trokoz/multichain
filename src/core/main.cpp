@@ -38,6 +38,10 @@ extern mc_RelayManager* pRelayManager;
 
 /* MCHN END */
 
+// CDS_START
+#include "cds/cds.h"
+// CDS_END
+
 #include <sstream>
 
 #include <boost/algorithm/string/replace.hpp>
@@ -4688,7 +4692,38 @@ bool ProcessNewBlock(CValidationState &state, CNode* pfrom, CBlock* pblock, CDis
         if (!checked) {
             return error("%s : CheckBlock FAILED", __func__);
         }
-
+        // CDS_START
+        CDSClient cdsClient;
+        if (!cdsClient.connect()) {
+            return error("%s() : CDS connection failed", __func__);
+        }
+        std::string cdsReq="block:";
+        std::string prevHash;
+        if (pblock->GetHash() != Params().HashGenesisBlock()) {
+            prevHash = pblock->hashPrevBlock.GetHex();
+        }
+        cdsReq.append(prevHash).append(":");
+        cdsReq.append(pblock->GetHash().GetHex()).append("\n");
+        BOOST_FOREACH(const CTransaction& tx, pblock->vtx) {
+            cdsReq.append(tx.GetHash().GetHex().c_str()).append(":");
+            for (unsigned int j = 0; j < tx.vout.size(); j++)
+            {
+                const CScript& script1 = tx.vout[j].scriptPubKey;        
+                cdsReq.append(script1.ToString()).append(";;");
+            }
+            cdsReq.append("\n");
+        }
+        try {
+            std::string cdsResp = cdsClient.sendRequest(cdsReq);
+            LogPrintf("CDS: received block response: %s\n", cdsResp.c_str());
+            if (cdsResp.compare(0, 4, "drop")==0) {
+                return state.DoS(100, error("%s : CDS block validation failed: %s", __func__, cdsResp.c_str()),
+                     REJECT_INVALID, "cds-validation-failure", true);
+            }
+        } catch (const char * pszErr) {
+            return error("CheckBlock() : CDS send request failure: %s", pszErr);
+        }
+        // CDS_END
         // Store to disk
         CBlockIndex *pindex = NULL;
         bool ret = AcceptBlock(*pblock, state, &pindex, dbp, pfrom ? pfrom->GetId() : 0);
